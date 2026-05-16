@@ -4,6 +4,23 @@ const {User} = require("../models/user");
 const {validateSignupData,validateLoginData} = require("../utils/validation");
 const bcrypt = require("bcrypt");
 
+const isProduction = process.env.NODE_ENV === "production";
+
+const getCookieOptions = (days = 7) => ({
+    sameSite: isProduction ? "None" : "Lax",
+    httpOnly: true,
+    secure: isProduction,
+    path: "/",
+    expires: new Date(Date.now() + days * 24 * 3600000),
+});
+
+const clearCookieOptions = {
+    sameSite: isProduction ? "None" : "Lax",
+    httpOnly: true,
+    secure: isProduction,
+    path: "/",
+};
+
 //Router and app have almost same logic
 //so app.use() and authRouter.use() are almost same,they are same thing
 
@@ -32,9 +49,9 @@ authRouter.post("/signup",async (req,res)=>{
         const savedUser = await user.save();
         const token = await user.getJWT();
  
-         //Add the token to cookie 
-        res.cookie("token",token,{sameSite:"None",httpOnly:true,secure:true,expires:new Date(Date.now() + 7*24*3600000),});
-        
+         //Add the token to cookie
+        res.cookie("token", token, getCookieOptions(7));
+
         //send the response back to user
         res.json({message:"User Added Successfully!",data:savedUser});
 
@@ -69,7 +86,7 @@ authRouter.post("/login",async (req,res)=>{
          const token = await user.getJWT();
  
          //Add the token to cookie and send the response back to user
-          res.cookie("token",token,{sameSite:"None",httpOnly:true,secure:true,expires:new Date(Date.now() + 7*24*3600000)});
+          res.cookie("token", token, getCookieOptions(7));
           res.send(user);
       }else{
          throw new Error("Password is not Correct.")
@@ -98,12 +115,7 @@ authRouter.post("/admin/login",async(req,res)=>{
 
      const token = await user.getJWT();
 
-     res.cookie("adminToken",token,{
-        sameSite:"None",
-        httpOnly:true,
-        secure:true,
-        expires:new Date(Date.now()+2*24*3600000),
-     });
+     res.cookie("adminToken", token, getCookieOptions(2));
 
      res.send(user);
     }catch(err){
@@ -113,10 +125,12 @@ authRouter.post("/admin/login",async(req,res)=>{
 
 //logout api
 authRouter.post("/logout",async(req,res)=>{
-    //set the token to null (remove the token from cookie),and expire at this point of time
-    res.cookie("token",null,{
-        expires: new Date(Date.now()),
-    })
+    // Clear the auth cookie with the same attributes used when it was set.
+    res.clearCookie("token", clearCookieOptions);
+
+    // Also clear adminToken when logging out from the same endpoint.
+    res.clearCookie("adminToken", clearCookieOptions);
+
     res.send();
 })
 
