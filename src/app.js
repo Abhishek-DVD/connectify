@@ -14,9 +14,24 @@ require("./utils/cronjob");
 
 //middleware
 //adding cors options
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://www.connectify.icu",
+    "http://52.54.226.144",
+    "https://connectify.icu",
+];
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+}
+
 app.use(cors({
-    origin : ["http://localhost:5173","https://www.connectify.icu","http://52.54.226.144/","https://connectify.icu"],
-    credentials : true,
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        callback(new Error("CORS policy: Origin not allowed"));
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Authorization", "X-CSRF-Token", "X-Requested-With", "Accept", "Accept-Version", "Content-Length", "Content-MD5", "Content-Type", "Date", "X-Api-Version"],
 }));
