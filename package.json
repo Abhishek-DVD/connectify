@@ -17,6 +17,7 @@
   "dependencies": {
     "@aws-sdk/client-ses": "^3.750.0",
     "bcrypt": "^5.1.1",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
@@ -24,6 +25,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.10.0",
+    "multer": "^2.1.1",
     "node-cron": "^3.0.3",
     "razorpay": "^2.9.5",
     "socket.io": "^4.8.1",
