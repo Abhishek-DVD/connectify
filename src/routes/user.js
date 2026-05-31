@@ -6,6 +6,10 @@ const userRouter = express.Router();
 
 const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills"
 
+const escapeRegex = (value) => {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 //showing received requests
 userRouter.get("/user/requests/received",userAuth,async (req,res)=>{
     try{
@@ -56,6 +60,74 @@ userRouter.get("/user/connections",userAuth,async (req,res)=>{
 
     }catch(err){
         res.status(400).send({message:err.message});
+    }
+})
+
+//search registered users by name
+userRouter.get("/user/search",userAuth,async (req,res)=>{
+    try{
+        const loggedInUser = req.user;
+        const query = (req.query.query || "").trim();
+        let limit = parseInt(req.query.limit) || 8;
+        limit = limit > 20 ? 20 : limit;
+
+        if(query.length < 2){
+            return res.json({users:[]});
+        }
+
+        const safeQuery = escapeRegex(query);
+        const nameRegex = new RegExp(safeQuery,"i");
+
+        const users = await User.find({
+            _id: {$ne:loggedInUser._id},
+            $or:[
+                {firstName:nameRegex},
+                {lastName:nameRegex},
+            ],
+        }).select(USER_SAFE_DATA).limit(limit).lean();
+
+        const searchedUserIds = users.map((user) => user._id);
+        const connectionRequests = await connectionRequest.find({
+            $or:[
+                {fromUserId:loggedInUser._id,toUserId:{$in:searchedUserIds}},
+                {fromUserId:{$in:searchedUserIds},toUserId:loggedInUser._id},
+            ],
+        }).select("fromUserId toUserId status").lean();
+
+        const relationshipByUserId = new Map();
+        connectionRequests.forEach((request) => {
+            const fromUserId = request.fromUserId.toString();
+            const toUserId = request.toUserId.toString();
+            const loggedInUserId = loggedInUser._id.toString();
+            const otherUserId = fromUserId === loggedInUserId ? toUserId : fromUserId;
+
+            let relationshipStatus = request.status;
+            if(request.status === "accepted"){
+                relationshipStatus = "connected";
+            }else if(request.status === "interested"){
+                relationshipStatus = fromUserId === loggedInUserId ? "sent" : "received";
+            }
+
+            relationshipByUserId.set(otherUserId,{
+                relationshipStatus,
+                requestId:request._id,
+            });
+        });
+
+        const usersWithRelationship = users.map((user) => {
+            const relationship = relationshipByUserId.get(user._id.toString()) || {
+                relationshipStatus:"none",
+            };
+
+            return {
+                ...user,
+                ...relationship,
+            };
+        });
+
+        res.json({users:usersWithRelationship});
+    }catch(err){
+        res.status(400).json({message:err.message});
     }
 })
 
