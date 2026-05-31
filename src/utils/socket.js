@@ -14,10 +14,21 @@ const getSecretRoomId = (userId,targetUserId) => {
 }
 
 const initializeSocket = (server) => {
+
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://www.connectify.icu",
+    "https://connectify.icu",
+    "https://connectify-web-three.vercel.app",
+];
+
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+}
   
 const io = socket(server,{
     cors: { 
-        origin: ["https://www.connectify.icu","http://localhost:5173"],
+        origin: allowedOrigins,
         credentials : true,
     },
 })
